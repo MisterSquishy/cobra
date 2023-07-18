@@ -165,6 +165,9 @@ type Command struct {
 	// flagErrorFunc is func defined by user and it's called when the parsing of
 	// flags returns an error.
 	flagErrorFunc func(*Command, error) error
+	// flagValidationErrorFunc is func defined by user and it's called when the validation of
+	// flags returns an error.
+	flagValidationErrorFunc func(*Command, error) error
 	// helpTemplate is help template defined by user.
 	helpTemplate string
 	// helpFunc is help func defined by user.
@@ -309,6 +312,12 @@ func (c *Command) SetUsageTemplate(s string) {
 // fails.
 func (c *Command) SetFlagErrorFunc(f func(*Command, error) error) {
 	c.flagErrorFunc = f
+}
+
+// SetValidationErrorFunc sets a function to generate an error when flag validation
+// fails.
+func (c *Command) SetValidationErrorFunc(f func(*Command, error) error) {
+	c.flagValidationErrorFunc = f
 }
 
 // SetHelpFunc sets help function. Can be defined by Application.
@@ -1078,6 +1087,17 @@ func (c *Command) ExecuteC() (cmd *Command, err error) {
 		// all subcommands should respect it
 		if !cmd.SilenceErrors && !c.SilenceErrors {
 			c.PrintErrln("Error:", err.Error())
+		}
+
+		// If root command has SilenceErrors flagged,
+		// all subcommands should respect it
+		if _, isValidationErr := err.(ErrValidation); isValidationErr {
+			if cmd.flagValidationErrorFunc != nil {
+				err = cmd.flagValidationErrorFunc(cmd, err)
+				if err != nil {
+					return nil, err
+				}
+			}
 		}
 
 		// If root command has SilenceUsage flagged,

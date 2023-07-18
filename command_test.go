@@ -2046,6 +2046,25 @@ func TestFlagErrorFunc(t *testing.T) {
 	}
 }
 
+func TestValidationErrorFunc(t *testing.T) {
+	c := &Command{Use: "c", Run: emptyRun}
+	c.Flags().String("requiredFlag", "", "")
+	assertNoErr(t, c.MarkFlagRequired("requiredFlag"))
+
+	expectedFmt := "This is expected: %v"
+	c.SetValidationErrorFunc(func(_ *Command, err error) error {
+		return fmt.Errorf(expectedFmt, err)
+	})
+
+	_, err := executeCommand(c) // omits requiredFlag
+
+	got := err.Error()
+	expected := fmt.Sprintf(expectedFmt, "required flag(s) \"requiredFlag\" not set")
+	if got != expected {
+		t.Errorf("Expected %v, got %v", expected, got)
+	}
+}
+
 func TestFlagErrorFuncHelp(t *testing.T) {
 	c := &Command{Use: "c", Run: emptyRun}
 	c.PersistentFlags().Bool("help", false, "help for c")
